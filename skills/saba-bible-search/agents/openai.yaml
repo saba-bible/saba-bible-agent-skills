@@ -1,0 +1,3 @@
+interface:
+  display_name: "Saba Bible Search"
+  short_description: "Find verses by topic or phrase, vector search first"

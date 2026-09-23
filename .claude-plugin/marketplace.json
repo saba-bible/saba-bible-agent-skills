@@ -1,0 +1,22 @@
+{
+  "name": "saba-bible",
+  "owner": {
+    "name": "saba-bible",
+    "url": "https://github.com/saba-bible"
+  },
+  "description": "Grounded Bible study skills on Saba resources, as an installable Claude Code plugin.",
+  "plugins": [
+    {
+      "name": "saba-bible-skills",
+      "source": "./",
+      "description": "Exegesis and theological reasoning grounded in Saba resources through the Saba MCP (ULT, UST, Hebrew and Greek, Translation Notes, Calvin, Matthew Henry, Keil and Delitzsch, Westminster proofs).",
+      "category": "productivity",
+      "keywords": [
+        "bible",
+        "exegesis",
+        "theology",
+        "saba"
+      ]
+    }
+  ]
+}

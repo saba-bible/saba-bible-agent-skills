@@ -1,0 +1,23 @@
+{
+  "name": "saba-bible-skills",
+  "version": "0.1.0",
+  "description": "Grounded Bible study skills on Saba resources: exegesis and theological reasoning that read Scripture, notes, and commentaries through the Saba MCP and cite every claim. No web search, no answers from memory.",
+  "author": {
+    "name": "saba-bible",
+    "url": "https://github.com/saba-bible"
+  },
+  "homepage": "https://app.saba.bible",
+  "repository": "https://github.com/saba-bible/saba-bible-agent-skills",
+  "keywords": [
+    "bible",
+    "exegesis",
+    "theology",
+    "saba",
+    "skills"
+  ],
+  "skills": [
+    "./skills/saba-bible-search",
+    "./skills/saba-bible-exegesis",
+    "./skills/saba-bible-theology"
+  ]
+}
