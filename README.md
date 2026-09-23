@@ -8,13 +8,13 @@ Works with **Cursor** (primary), **Claude Code**, **Codex**, and any agent that 
 
 ## Prerequisite: the Saba MCP server
 
-The skills call the `saba` MCP tools (`list_resources`, `install`, `read`, `read_commentary`, `search_vector`, `search_lexical`). Install the server once:
+The skills call the `saba` MCP tools (`list_resources`, `install`, `read`, `read_commentary`, `search_vector`, `search_lexical`). The server must be registered with your agent before a skill can do anything; each skill checks for it first and, if it is missing, walks through this install instead of answering from memory. Install the server once (`npm i -g` is the short form):
 
 ```bash
 npm install -g saba-bible-mcp
 ```
 
-Then register it with your agent. Cursor: Settings, MCP, or `.cursor/mcp.json`. Claude Code: `claude mcp add saba -- saba-bible-mcp`. Codex: `~/.codex/config.toml`.
+Then register it with your agent. Cursor: Settings, MCP, or `.cursor/mcp.json`. Claude Code: `claude mcp add saba -- saba-bible-mcp`. Codex: `~/.codex/config.toml`. The agent client spawns `saba-bible-mcp`. It speaks stdio JSON-RPC, so leave it to the client.
 
 ```json
 {
@@ -65,7 +65,7 @@ Copy a folder from `skills/` into your agent's skill directory (`.cursor/skills/
 
 All skills are **model-invoked**: the agent reaches for them on its own when a question fits, and you can also name them directly.
 
-- **[saba-bible-search](./skills/saba-bible-search/SKILL.md)**: Find verses on a topic, idea, or phrase. Prefers `search_vector` (keyword plus semantic search over the ULT), uses `search_lexical` for exact quotes and other Bibles, reads every hit in context before reporting it, and never pads the list from memory.
+- **[saba-bible-search](./skills/saba-bible-search/SKILL.md)**: Find verses on a topic, an exact or half-remembered phrase, or cross-references to a passage. `search_vector` covers every installed Search index; `search_lexical` is for exact words in a specific Bible. Every reported verse was read in that session.
 - **[saba-bible-exegesis](./skills/saba-bible-exegesis/SKILL.md)**: Exegete a passage from the text out. Reads ULT, UST, and the Hebrew or Greek, pulls Translation Notes and the commentaries on the span, finds intertext by search, folds in your own notes from the repo, and writes up observations, synthesis, and gaps with a citation on every claim.
 - **[saba-bible-theology](./skills/saba-bible-theology/SKILL.md)**: Reason about a doctrine or theological question from Scripture gathered by search, the Westminster Standards' Scripture proofs, and the commentaries. Separates what the texts say, what follows from them, what the confessions say, and what the resources leave open.
 
@@ -77,7 +77,7 @@ Each skill carries the same contract:
 2. **Not allowed**: web search or fetch, other MCP servers, and the model's own recollection of commentaries, lexicons, scholarship, or original-language meanings.
 3. **Every interpretive claim is cited** to a Saba resource id and reference (`[en_tn ROM 8:28]`, `[en_calvin JHN 1:1]`) or a repo path (`[notes/romans.md]`).
 4. **Gaps are reported, not filled.** "Not covered by the installed Saba resources" is a valid answer.
-5. **If the Saba tools are not available**, the skill stops and tells the user how to install the MCP server. It does not fall back to memory.
+5. **If the Saba tools are not available**, the skill stops, installs and registers the MCP server (see Prerequisite above), and continues only once the tools are present. It does not fall back to memory.
 
 ## What the skills can read
 
@@ -87,7 +87,7 @@ Each skill carries the same contract:
 | Original texts | `hbo_uhb` (Hebrew), `el-x-koine_ugnt` (Greek NT), `el-x-koine_sr`, `grc_tr`, `grc_lxx` (Septuagint), Targums | `read`, `search_lexical` |
 | Verse notes | `en_tn` (Translation Notes), `en_tq` (Translation Questions), `en_mhc` (Matthew Henry), `en_calvin` (Calvin), `en_kd` (Keil and Delitzsch, OT) | `read_commentary` |
 | Confessional proofs | `en_wcf`, `en_wlc`, `en_wsc` (Westminster Confession, Larger and Shorter Catechism, by proof text) | `read_commentary` |
-| Topic search | ULT search index `search-en-ult` | `search_vector` |
+| Topic search | Every installed Search index. `search-en-ult` is the model plus the ULT index; Westminster and Schaff are separate ids (`search-en-wcf`, `search-en-wlc`, `search-en-wsc`, `search-en-schaff-nicea`, `search-en-schaff-chalcedon`, `search-en-schaff-heidelberg`) | `search_vector` |
 
 Lexicons (`en_tw`, `bundled/bdb`, `bundled/thayer`, LSJ), grammars, the confession and catechism texts as books, and Open Bible Stories are listed by `list_resources` but not yet readable through the MCP. The skills do not substitute memory for them.
 

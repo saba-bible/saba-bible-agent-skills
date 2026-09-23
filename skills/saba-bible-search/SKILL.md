@@ -1,93 +1,123 @@
 ---
 name: saba-bible-search
-description: Find Bible verses on a topic, idea, or phrase with the Saba MCP search tools, preferring search_vector (keyword plus semantic search over the ULT) and using search_lexical only for exact quotes, other Bibles, or when the index is missing. Use when the user asks for "verses about X", "where does the Bible say...", "find the verse that says...", wants a half-remembered passage located, or needs cross-references for a study. Every hit is read in context before it is reported; no web search, no verses recited from memory.
+description: Search the Bible for verses. Use when the user asks for verses on a topic, an exact or half-remembered phrase, or cross-references to a passage.
 ---
 
 # Saba Bible Search
 
-Find verses with the Saba MCP and report only what you read. `search_vector` first; `search_lexical` when the query is an exact quote, targets a Bible other than the ULT, or the index is not installed.
+Report verses you have read. A search hit is a **candidate** until that read.
+
+If the `saba` tools are absent from your tool list, follow Prerequisite, then start step 1.
 
 ## The grounding rule
 
-**Allowed sources**: output of the Saba MCP tools (`search_vector`, `search_lexical`, `read`, `list_resources`, `install`, `check_index`), and files already in the user's repository.
+**Allowed sources**: output of the Saba MCP tools (`search_vector`, `search_lexical`, `read`, `list_resources`, `install`), and files already in the user's repository.
 
-**Not allowed**: web search or fetch, other MCP servers, and verses or references recited from memory. A reference you happen to remember is a **hypothesis**: check it with `read` and, if it holds, report it labeled "direct lookup", not as a search result.
+**Not allowed**: web search or fetch, other MCP servers, and verses recited from memory.
 
-**Citations**: every reported verse carries its resource id and reference: `[en_ult PSA 23:1]`. Never report a verse you did not `read` in this session.
+**Citations**: every reported verse carries its resource id and reference, `[en_ult PSA 23:1]`. A verse enters the report only after you `read` it in this session.
 
-**No Saba tools?** Stop. Tell the user to install the MCP server (`npm install -g saba-bible-mcp`, then add `{"mcpServers":{"saba":{"command":"saba-bible-mcp"}}}` to their agent's MCP config). Do not answer from memory in the meantime.
+**Gaps**: when these searches do not find it, say "not found by the searches run".
 
 ## Workflow
-
-```
-- [ ] 1. Classify the query
-- [ ] 2. Search (vector first)
-- [ ] 3. Widen with rephrasings and a lexical pass
-- [ ] 4. Read every hit you will report
-- [ ] 5. Check the user's own notes
-- [ ] 6. Report
-```
 
 ### 1. Classify the query
 
 | The user gave... | Do this |
 |---|---|
-| A topic, idea, or question ("verses about hope", "God comforting mourners") | `search_vector` |
-| Exact words, a quote, or "the verse that says..." | `search_lexical` with the quoted words |
-| A Bible other than the ULT (ESV they downloaded, `hbo_uhb`, `el-x-koine_ugnt`) | `search_lexical` with `resource` set; the vector index covers the ULT only |
-| A bare reference ("Romans 8:28") | Not a search: `read` it. If they want its meaning, use `saba-bible-exegesis` |
+| A topic, idea, or question ("verses about hope") | `search_vector` |
+| Exact words, a quote, or a half-remembered line | `search_lexical` with those words |
+| A specific Bible (`eng_esv`, `hbo_uhb`, `el-x-koine_ugnt`) | `search_lexical` with `resource` set |
+| A bare reference ("Romans 8:28") | `read` it. For its meaning, use `saba-bible-exegesis` |
 
-### 2. Search, vector first
+A reference you remember is a **direct lookup**: `read` it, and if it holds, report it under Direct lookup.
 
-Call `search_vector` with the query as the user phrased it, `limit` 20 (raise to 30 for broad topics).
+**Done when** the query sits in one row and that row's tool is the one you will call.
 
-If it errors because the index is not installed: tell the user `search-en-ult` is about 220 MB and `install ["search-en-ult"]` unless they decline. If they decline, or while it downloads, run `search_lexical` instead and **label the results lexical-only** in the report. Never fall back silently.
+### 2. Search
+
+When the row says `search_vector`, call it with the user's words, `limit` 20 (30 for a broad topic). Call it straight away. It errors if the model is missing, and that error is the signal to install.
+
+`search_vector` searches every Search index already on the machine. `search-en-ult` is the model plus the ULT index. Westminster and Schaff are separate ids (`search-en-wcf`, `search-en-wlc`, `search-en-wsc`, `search-en-schaff-nicea`, `search-en-schaff-chalcedon`, `search-en-schaff-heidelberg`); they appear in the hits only after they are installed.
+
+On the error "Topic search model is not downloaded":
+
+1. Tell the user `search-en-ult` is about 220 MB, downloaded once.
+2. Call `install` with `{"ids": ["search-en-ult"]}`. Wait for it to return.
+3. Call `search_vector` again with the same query.
+
+If the user declines, or the tool returns any other error, call `search_lexical` and label the results **lexical-only**. Say what the other error was.
+
+When the row says `search_lexical`, call that and skip the install path.
+
+**Done when** the chosen tool has returned candidates, or a declined or failed vector search has lexical-only candidates in hand.
 
 ### 3. Widen
 
-- Rephrase once or twice in the ULT's register and run `search_vector` again. The ULT is literal: "counted as righteous" not "justified", "steadfast love" not "mercy" in many Psalms. Let the first hits teach you the wording.
-- Take a distinctive 2 to 4 word phrase from a good hit and run `search_lexical` with it to catch verses that use the same wording.
-- For cross-references to a passage the user named, `read` the passage first, then search with its ideas and its distinctive phrases.
+- Rephrase a topic once or twice in the ULT's register and run `search_vector` again ("counted as righteous", "steadfast love"). Let the first candidates teach you the wording.
+- Take a distinctive 2 to 4 word phrase from a strong candidate and run `search_lexical` with it.
+- For cross-references, `read` the named passage first, then search its ideas and its distinctive phrases.
 
-Merge hits and drop duplicates. Search hits are candidates, not results.
+Merge candidates and drop duplicates.
 
-### 4. Read every hit you will report
+**Done when** one rephrasing or one phrase search has been merged into the candidate list. A bare reference is already done.
 
-For each candidate you intend to report, `read` it on `en_ult` with a verse or two either side. Drop candidates that in context are about something else. Keep the ones that answer the query, and note in one line why each does, from what you read.
+### 4. Read every candidate you will report
 
-If the user has another Bible installed (`list_resources` shows it), you may `read` the kept verses there too so they see familiar wording; cite that id.
+`read` each one on its Bible with a verse or two either side. A ULT hit is `en_ult`. A hit that carries a locus is read with `read_commentary` on its resource. Drop a candidate that in context is about something else, and note why in one line. Keep a one-line reason, from that read, for each one you keep.
+
+When `list_resources` shows another Bible installed, you may `read` the kept verses there too so the user sees familiar wording. Cite that id.
+
+Report as many as the user asked for. Otherwise keep 10 to 15.
+
+**Done when** every kept candidate has that read and a one-line reason, every dropped candidate has a one-line reason, and the kept set is within the cap.
 
 ### 5. Check the user's own notes
 
-Search the repo for the topic's terms. If the user already collected verses on it, include them under their own heading, cited by path, and check each against `read` before listing it as Scripture.
+Search the repo for the topic's terms. Verses the user already collected go under their own heading, cited by path, each one `read` before it is listed as Scripture.
+
+**Done when** the repo search has been run, and each verse in those notes has been read or the search found nothing.
 
 ### 6. Report
+
+The line under each verse says why it matched. Meaning belongs to `saba-bible-exegesis`. Doctrine belongs to `saba-bible-theology`.
+
+Order by relevance from the reads. Group Verses by sub-theme when there are more than ten. An empty kept set says "not found by the searches run" and lists the queries.
 
 ```markdown
 # <Query>
 
 ## Verses
-1. **<REF>** <ULT text> [en_ult <REF>]
-   <One line: why it answers the query, from context.>
+1. **<REF>** <text> [<resource> <REF>]
+   <One line: why it answers the query, from the read.>
 2. ...
 
 ## From your notes
 - <path>: <verses the user already collected> [notes/...]
 
 ## Direct lookup
-- <REF> <ULT text> [en_ult <REF>]  (checked by read, not surfaced by search)
+- <REF> <text> [<resource> <REF>]
 
 ## Searched
 - search_vector: "<query>", "<rephrasing>"
 - search_lexical: "<phrase>" (<resource>)
-- <Lexical-only, if the vector index was unavailable.>
+- <Lexical-only, when vector search was declined or failed.>
 ```
 
-Group the Verses section by sub-theme when there are more than ten. Order by relevance as judged from reading, not by raw search rank. If nothing survives step 4, say so and list the queries you ran.
+**Done when** every section is present or marked empty, and every verse line carries a citation from a read in this session.
 
-## Guardrails
+## Prerequisite: the Saba MCP server
 
-- The vector index is ULT-only. Do not claim a topic is "not in the Bible" from an empty vector result; try rephrasings and a lexical pass first, then say "not found by the searches run".
-- Do not pad the list with verses you remember. Direct lookups go in their own section, verified by `read`.
-- Do not interpret. Say why a verse matched; leave meaning to `saba-bible-exegesis` and doctrine to `saba-bible-theology`.
-- Long lists: cap at what the user asked for; default 10 to 15 verified verses.
+Install and register the server, then continue the workflow:
+
+```bash
+npm i -g saba-bible-mcp
+```
+
+Then add it to the agent's MCP config (Cursor: `.cursor/mcp.json` or Settings, MCP; Claude Code: `claude mcp add saba -- saba-bible-mcp`; Codex: `~/.codex/config.toml`) and ask the user to reload MCP servers:
+
+```json
+{ "mcpServers": { "saba": { "command": "saba-bible-mcp" } } }
+```
+
+The agent client spawns `saba-bible-mcp`. It speaks stdio JSON-RPC, so leave it to the client. Bible content is not in the package; `install` downloads it on first use.
